@@ -14,6 +14,7 @@ const Dealer = () => {
   const [dealer, setDealer] = useState({});
   const [reviews, setReviews] = useState([]);
   const [unreviewed, setUnreviewed] = useState(false);
+  const [fetchError, setFetchError] = useState("");
   const [postReview, setPostReview] = useState(<></>)
 
   let curr_url = window.location.href;
@@ -23,31 +24,52 @@ const Dealer = () => {
   let dealer_url = root_url+`djangoapp/dealer/${id}`;
   let reviews_url = root_url+`djangoapp/reviews/dealer/${id}`;
   let post_review = root_url+`postreview/${id}`;
+
+  const readJsonResponse = async (res) => {
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const body = await res.text();
+      throw new Error(`Expected JSON response but received: ${body.slice(0, 80)}`);
+    }
+    return res.json();
+  }
   
   const get_dealer = async ()=>{
-    const res = await fetch(dealer_url, {
-      method: "GET"
-    });
-    const retobj = await res.json();
-    
-    if(retobj.status === 200) {
-      let dealerobjs = Array.from(retobj.dealer)
-      setDealer(dealerobjs[0])
+    try {
+      const res = await fetch(dealer_url, {
+        method: "GET"
+      });
+      const retobj = await readJsonResponse(res);
+      if(retobj.status === 200) {
+        let dealerobjs = Array.from(retobj.dealer || [])
+        setDealer(dealerobjs[0] || {})
+        setFetchError("")
+      }
+    } catch (err) {
+      console.error(err)
+      setFetchError("Could not load dealer details from backend.")
     }
   }
 
   const get_reviews = async ()=>{
-    const res = await fetch(reviews_url, {
-      method: "GET"
-    });
-    const retobj = await res.json();
-    
-    if(retobj.status === 200) {
-      if(retobj.reviews.length > 0){
-        setReviews(retobj.reviews)
-      } else {
-        setUnreviewed(true);
+    try {
+      const res = await fetch(reviews_url, {
+        method: "GET"
+      });
+      const retobj = await readJsonResponse(res);
+      if(retobj.status === 200) {
+        if((retobj.reviews || []).length > 0){
+          setReviews(retobj.reviews)
+          setUnreviewed(false)
+        } else {
+          setUnreviewed(true);
+        }
+        setFetchError("")
       }
+    } catch (err) {
+      console.error(err)
+      setFetchError("Could not load dealer reviews from backend.")
+      setUnreviewed(true)
     }
   }
 
@@ -70,13 +92,14 @@ const Dealer = () => {
 return(
   <div style={{margin:"20px"}}>
       <Header/>
+      {fetchError ? <p>{fetchError}</p> : null}
       <div style={{marginTop:"10px"}}>
       <h1 style={{color:"grey"}}>{dealer.full_name}{postReview}</h1>
       <h4  style={{color:"grey"}}>{dealer['city']},{dealer['address']}, Zip - {dealer['zip']}, {dealer['state']} </h4>
       </div>
-      <div class="reviews_panel">
+      <div className="reviews_panel">
       {reviews.length === 0 && unreviewed === false ? (
-        <text>Loading Reviews....</text>
+        <span>Loading Reviews....</span>
       ):  unreviewed === true? <div>No reviews yet! </div> :
       reviews.map(review => (
         <div className='review_panel'>
