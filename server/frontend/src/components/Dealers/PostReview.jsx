@@ -11,7 +11,7 @@ const PostReview = () => {
   const [model, setModel] = useState();
   const [year, setYear] = useState("");
   const [date, setDate] = useState("");
-  const [carmodels, setCarmodels] = useState([]);
+//   const [carmodels, setCarmodels] = useState([]);
 
   let curr_url = window.location.href;
   let root_url = curr_url.substring(0,curr_url.indexOf("postreview"));
@@ -20,6 +20,12 @@ const PostReview = () => {
   let dealer_url = root_url+`djangoapp/dealer/${id}`;
   let review_url = root_url+`djangoapp/add_review`;
   let carmodels_url = root_url+`djangoapp/get_cars`;
+
+const [carmodels, setCarmodels] = useState([
+  { CarMake: "Toyota", CarModel: "Corolla" },
+  { CarMake: "Honda", CarModel: "Civic" },
+  { CarMake: "Ford", CarModel: "Focus" }
+]);
 
   const postreview = async ()=>{
     let name = sessionStorage.getItem("firstname")+" "+sessionStorage.getItem("lastname");
@@ -75,15 +81,21 @@ const PostReview = () => {
     }
   }
 
-  const get_cars = async ()=>{
-    const res = await fetch(carmodels_url, {
-      method: "GET"
-    });
+const get_cars = async () => {
+  try {
+    const res = await fetch(carmodels_url, { method: "GET" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const retobj = await res.json();
-    
-    let carmodelsarr = Array.from(retobj.CarModels)
-    setCarmodels(carmodelsarr)
+    setCarmodels(retobj.CarModels || []); // fallback if key missing
+  } catch (error) {
+    console.error("Failed to fetch car models:", error);
+    // fallback/demo data
+    setCarmodels([
+      { CarMake: "Toyota", CarModel: "Corolla" },
+      { CarMake: "Honda", CarModel: "Civic" }
+    ]);
   }
+};
   useEffect(() => {
     get_dealer();
     get_cars();
@@ -101,12 +113,19 @@ const PostReview = () => {
       </div>
       <div className='input_field'>
       Car Make 
-        <select name="cars" id="cars" defaultValue="" onChange={(e) => setModel(e.target.value)}>
-        <option value="" disabled hidden>Choose Car Make and Model</option>
-      {carmodels.map(carmodel => (
-          <option key={`${carmodel.CarMake}-${carmodel.CarModel}`} value={carmodel.CarMake+" "+carmodel.CarModel}>{carmodel.CarMake} {carmodel.CarModel}</option>
-      ))}
-      </select>        
+       <select 
+  name="cars" 
+  id="cars" 
+  value={model || ""} 
+  onChange={(e) => setModel(e.target.value)}
+>
+  <option value="" disabled hidden>Choose Car Make and Model</option>
+  {carmodels.map(c => (
+    <option key={`${c.CarMake}-${c.CarModel}`} value={c.CarMake + " " + c.CarModel}>
+      {c.CarMake} {c.CarModel}
+    </option>
+  ))}
+</select>    
       </div >
 
       <div className='input_field'>
